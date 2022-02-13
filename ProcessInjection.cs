@@ -21,7 +21,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 
-namespace RSject
+namespace RSinject
 {
     [ComVisible(true)]
     public class TestClass
