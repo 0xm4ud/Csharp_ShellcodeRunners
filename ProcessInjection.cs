@@ -117,7 +117,7 @@ namespace RSjectLowlevel
 
         if (CreateRemoteThread(pHandle, IntPtr.Zero, 0, baseAddrR, IntPtr.Zero, 0, IntPtr.Zero) != IntPtr.Zero)
         {
-            Console.WriteLine("Shell ?");
+            Console.WriteLine("Shell?");
         }
         else
         {
